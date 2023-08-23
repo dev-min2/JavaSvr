@@ -17,7 +17,6 @@ public class Session {
 	private RingBuffer recvBuffer = new RingBuffer();
 	private RingBuffer sendBuffer = new RingBuffer();
 	private Object sendLock = new Object();
-	private Queue<Packet> messages = new LinkedList<Packet>();
 	
 	public void Init(AsynchronousSocketChannel socketChannel, int sessionId)
 	{
@@ -36,16 +35,17 @@ public class Session {
 			public void completed(Integer result, ByteBuffer attachment) {
 				try {
 					int readSize = 0; // 실제 읽은 총량(all amount)사이즈
-					int recvLen = 0; // 패킷(1개 기준)수신한 사이즈
+					int recvLen = 0; // 남은 패킷 길이.
 					attachment.flip();
 					while(true)
 					{
 						byte[] buffer = attachment.array(); // 원본 버퍼이므로 수정조심.
 						recvLen = attachment.limit() - readSize;
 						
+						// 더이상 읽을게 없다면.
 						if(recvLen <= 0)
 							break;
-						
+
 						// 최소 4바이트는 왔는지.
 						if(recvLen < Packet.PACKET_MIN_LEN)
 							break;
@@ -64,8 +64,9 @@ public class Session {
 						recvBuffer.readBuffer(packetLen); // 실제 버퍼의 position또한 이동.
 						
 						Packet packet = PacketUtil.convertPacketFromBytes(packetBuffer);
+						if(packet != null)
+							DispatchMessageManager.getInstance().addRecvPacket(sessionId, packet);
 						
-						DispatchMessageManager.getInstance().addRecvPacket(sessionId, packet);
 						readSize += packetLen;
 					}
 					if(recvLen <= 0)

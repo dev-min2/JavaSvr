@@ -10,6 +10,7 @@ public class RingBuffer {
 	private int offset = 0; // 현재 버퍼안의 데이터 시작위치
 	private byte[] buffer;
 	private ByteBuffer byteBuffer;
+	private ByteBuffer btMark = null;
 	
 	public RingBuffer()
 	{
@@ -56,5 +57,40 @@ public class RingBuffer {
 	public void clean()
 	{
 		byteBuffer.clear();
+	}
+	public void compact()
+	{
+		byteBuffer.compact();
+	}
+	
+	public int getPosition()
+	{
+		return byteBuffer.position();
+	}
+	
+	public void mark()
+	{
+		btMark = byteBuffer.mark();
+	}
+	
+	public ByteBuffer checkMarkAndGetPosition()
+	{
+		ByteBuffer ret = null;
+		if(btMark != null)
+		{
+			ret = btMark;
+			btMark = null;
+		}
+		return ret;
+	}
+	
+	public boolean hasRemanining()
+	{
+		return byteBuffer.hasRemaining();
+	}
+	
+	public void setPosition(int newPosition)
+	{
+		byteBuffer.position(newPosition);
 	}
 }

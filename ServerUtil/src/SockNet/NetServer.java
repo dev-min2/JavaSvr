@@ -55,9 +55,9 @@ public class NetServer {
 				try {
 					Session session = new Session();
 					int sessionid = sessionCnt.incrementAndGet();
+					sessionByID.put(sessionid, session);
 					session.Init(result, sessionid);
 					
-					sessionByID.put(sessionid, session);
 					DispatchMessageManager.getInstance().connectSession(sessionid);
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
