@@ -86,7 +86,7 @@ public class Session {
 					else
 					{
 						recvBuffer.setPosition(readSize + recvLen); // Position 이동해줘야 해당 Position뒤로 데이터가 들어온다. 
-						recvBuffer.setRemainLen(recvLen); // clean처리하지않고, recvLen(수신한 데이터)을 더해준다.
+						recvBuffer.setRemainLen(recvLen); // 처리되지 못하고, 남은 데이터
 					}
 					
 					ByteBuffer byteBuffer2 = recvBuffer.getBuffer();
