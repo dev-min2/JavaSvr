@@ -11,6 +11,7 @@ public class RingBuffer {
 	private byte[] buffer;
 	private ByteBuffer byteBuffer;
 	private ByteBuffer btMark = null;
+	private int remainLen = 0;
 	
 	public RingBuffer()
 	{
@@ -68,29 +69,18 @@ public class RingBuffer {
 		return byteBuffer.position();
 	}
 	
-	public void mark()
+	public void setPosition(int newPos)
 	{
-		btMark = byteBuffer.mark();
+		byteBuffer.position(newPos);
 	}
 	
-	public ByteBuffer checkMarkAndGetPosition()
+	public void setRemainLen(int remainLen)
 	{
-		ByteBuffer ret = null;
-		if(btMark != null)
-		{
-			ret = btMark;
-			btMark = null;
-		}
-		return ret;
+		this.remainLen = remainLen;
 	}
 	
-	public boolean hasRemanining()
+	public int getRemainLen()
 	{
-		return byteBuffer.hasRemaining();
-	}
-	
-	public void setPosition(int newPosition)
-	{
-		byteBuffer.position(newPosition);
+		return remainLen;
 	}
 }

@@ -37,9 +37,14 @@ public class Session {
 					int readSize = 0; // 실제 읽은 총량(all amount)사이즈
 					int recvLen = 0; // 남은 패킷 길이.
 					attachment.flip();
+					
+					// 이전에 남은 데이터가 있다면
+					int pos = recvBuffer.getPosition(); // 현재 읽어야할 위치.
+					int remainLen = recvBuffer.getRemainLen(); // 이전에 남은 데이터가 있는지 체크
+					byte[] buffer = attachment.array(); // 원본 버퍼.
 					while(true)
 					{
-						byte[] buffer = attachment.array(); // 원본 버퍼이므로 수정조심.
+						// 수신한 버퍼 데이터의 크기.(이미 읽은건 뺴준다)
 						recvLen = attachment.limit() - readSize;
 						
 						// 더이상 읽을게 없다면.
@@ -47,30 +52,44 @@ public class Session {
 							break;
 
 						// 최소 4바이트는 왔는지.
-						if(recvLen < Packet.PACKET_MIN_LEN)
+						if((remainLen + recvLen) < Packet.PACKET_MIN_LEN)
 							break;
 
-						int packetLenIndex = attachment.position() + Packet.PACKET_CHECK;
+						//int packetLenIndex = attachment.position() + Packet.PACKET_CHECK;
+						int packetLenIndex = pos + Packet.PACKET_CHECK; 
 						short packetLen = 0;
 						
 						packetLen |= (((short) buffer[packetLenIndex]) << 8) & 0xFF00;
 						packetLen |= (((short) buffer[packetLenIndex + 1])) & 0xFF;
 						// 패킷길이보다 작다면.
-						if(recvLen < packetLen)
+						if((recvLen + remainLen) < packetLen)
 							break;
 						
 						byte[] packetBuffer = new byte[packetLen];
-						attachment.get(packetBuffer); // 한 버퍼의 여러개 패킷대응을 위해 position 이동.
-						recvBuffer.readBuffer(packetLen); // 실제 버퍼의 position또한 이동.
+						//attachment.get(packetBuffer); // 한 버퍼의 여러개 패킷대응을 위해 position 이동.
+						recvBuffer.readBuffer(packetLen - remainLen); // 실제 버퍼의 position이동.
+						
+						System.arraycopy(buffer, pos, packetBuffer, 0, packetLen);
 						
 						Packet packet = PacketUtil.convertPacketFromBytes(packetBuffer);
 						if(packet != null)
 							DispatchMessageManager.getInstance().addRecvPacket(sessionId, packet);
 						
 						readSize += packetLen;
+						pos += packetLen;
+						
+						if(remainLen > 0)
+						{
+							remainLen = 0;
+						}
 					}
 					if(recvLen <= 0)
 						recvBuffer.clean();
+					else
+					{
+						recvBuffer.setPosition(readSize); // 실제 읽은 데이터만큼만 이동.
+						recvBuffer.setRemainLen(recvLen); // clean처리하지않고, recvLen(수신한 데이터)을 더해준다.
+					}
 					
 					ByteBuffer byteBuffer2 = recvBuffer.getBuffer();
 					socketChannel.read(byteBuffer2, byteBuffer2, this); //데이터 다시 읽기
