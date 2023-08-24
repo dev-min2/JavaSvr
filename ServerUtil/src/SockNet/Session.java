@@ -39,8 +39,8 @@ public class Session {
 					attachment.flip();
 					
 					// 이전에 남은 데이터가 있다면
-					int pos = recvBuffer.getPosition(); // 현재 읽어야할 위치.
 					int remainLen = recvBuffer.getRemainLen(); // 이전에 남은 데이터가 있는지 체크
+					int pos = recvBuffer.getPosition() - remainLen; // 현재 읽어야할 위치.
 					byte[] buffer = attachment.array(); // 원본 버퍼.
 					while(true)
 					{
@@ -79,15 +79,13 @@ public class Session {
 						pos += packetLen;
 						
 						if(remainLen > 0)
-						{
 							remainLen = 0;
-						}
 					}
 					if(recvLen <= 0)
 						recvBuffer.clean();
 					else
 					{
-						recvBuffer.setPosition(readSize); // 실제 읽은 데이터만큼만 이동.
+						recvBuffer.setPosition(readSize + recvLen); // Position 이동해줘야 해당 Position뒤로 데이터가 들어온다. 
 						recvBuffer.setRemainLen(recvLen); // clean처리하지않고, recvLen(수신한 데이터)을 더해준다.
 					}
 					
