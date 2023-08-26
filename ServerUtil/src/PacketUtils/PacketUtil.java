@@ -32,6 +32,14 @@ public class PacketUtil
 		return ret;
 	}
 	
+	public static byte[] convertBytesFromPacket(Packet packet) throws Exception
+	{
+		if(packet == null || !packet.isValidPacket())
+			return null;
+		
+		return getPacketBuffer(packet.getPacketInfo().getValue(),packet);
+	}
+	
 	
 	
 	public static Packet convertPacketFromBytes(byte[] bytes) throws ClassNotFoundException, IOException

@@ -121,6 +121,14 @@ public class Session {
 	public void send(Packet packet) {
 		synchronized(sendLock)
 		{
+			try {
+				byte[] packetArray = PacketUtil.convertBytesFromPacket(packet);
+				
+			}catch(Exception e)
+			{
+				e.printStackTrace();
+				return;
+			}
 			ByteBuffer buffer = sendBuffer.getBuffer();
 			socketChannel.write(buffer,buffer,new CompletionHandler<Integer, ByteBuffer>(){
 				@Override
