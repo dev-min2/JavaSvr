@@ -116,7 +116,7 @@ public class Session {
 
 	// send는 언제든 호출될 수 있음.
 	// Dispatch sendThread1 -> A Session Pop ~~>패킷처리
-	// Dispatch sendThread2 -> A Session Pop ~~>패킷처리
+	// Dispatch sendThread2 -> A Session Pop ~~>패킷처리 
 	// 위와 같은 경우때문에 lock을 걸어야함.
 	public void send(Packet packet) {
 		synchronized(sendLock)
