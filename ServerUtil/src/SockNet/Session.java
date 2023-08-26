@@ -24,9 +24,9 @@ public class Session {
 		this.sessionId = sessionId;
 		registerReceive(); // 초기화하자마자 receive 걸어두기
 	}
-	//클라이언트로부터 데이터 받기
-	// 현재 데이터가 정상적으로 오는경우는 잘 동작함.(패킷1개. 혹은 여러개가 한꺼번에 수신된 경우에서 모든 패킷이 올바르게 왔을 때.)
-	// 이제 패킷1개는 제대로오고 2번째 패킷이 덜온경우를 체크해보자.
+	
+	// 연결된 Session 비동기 Recv요청.
+	// 요청 -> 데이터 수신&처리 -> 재요청
 	void registerReceive()
 	{
 		ByteBuffer byteBuffer = recvBuffer.getBuffer();
@@ -55,7 +55,6 @@ public class Session {
 						if((remainLen + recvLen) < Packet.PACKET_MIN_LEN)
 							break;
 
-						//int packetLenIndex = attachment.position() + Packet.PACKET_CHECK;
 						int packetLenIndex = pos + Packet.PACKET_CHECK; 
 						short packetLen = 0;
 						
@@ -66,9 +65,8 @@ public class Session {
 							break;
 						
 						byte[] packetBuffer = new byte[packetLen];
-						//attachment.get(packetBuffer); // 한 버퍼의 여러개 패킷대응을 위해 position 이동.
-						recvBuffer.readBuffer(packetLen - remainLen); // 실제 버퍼의 position이동.
-						
+
+						recvBuffer.readBuffer(packetLen - remainLen); // 실제 버퍼의 position이동.						
 						System.arraycopy(buffer, pos, packetBuffer, 0, packetLen);
 						
 						Packet packet = PacketUtil.convertPacketFromBytes(packetBuffer);
@@ -78,11 +76,12 @@ public class Session {
 						readSize += packetLen;
 						pos += packetLen;
 						
+						// remainLen > 0이었고, 여기까지왔다면 해당 패킷은 처리되었다는것이므로 0으로 수정
 						if(remainLen > 0)
 							remainLen = 0;
 					}
 					if(recvLen <= 0)
-						recvBuffer.clean();
+						recvBuffer.clean(); // 버퍼 초기화
 					else
 					{
 						recvBuffer.setPosition(readSize + recvLen); // Position 이동해줘야 해당 Position뒤로 데이터가 들어온다. 
@@ -90,7 +89,7 @@ public class Session {
 					}
 					
 					ByteBuffer byteBuffer2 = recvBuffer.getBuffer();
-					socketChannel.read(byteBuffer2, byteBuffer2, this); //데이터 다시 읽기
+					socketChannel.read(byteBuffer2, byteBuffer2, this); //데이터 다시 읽기 요청
 				}catch(Exception e) {
 					e.printStackTrace();
 					closeSession();
@@ -115,37 +114,35 @@ public class Session {
 		return sessionId;
 	}
 
-	
 	// send는 언제든 호출될 수 있음.
+	// Dispatch sendThread1 -> A Session Pop ~~>패킷처리
+	// Dispatch sendThread2 -> A Session Pop ~~>패킷처리
+	// 위와 같은 경우때문에 lock을 걸어야함.
 	public void send(Packet packet) {
-		//Charset charset = Charset.forName("utf-8");
-		//ByteBuffer byteBuffer = charset.encode(data);
-		//socketChannel.write(byteBuffer, null, new CompletionHandler<Integer, Void>(){
-			//@Override
-			//public void completed(Integer result, Void attachment) {
-				// TODO Auto-generated method stub
-				
-			//}
-
-			//@Override
-			//public void failed(Throwable exc, Void attachment) {
-				//try{
-					//String message = "[클라이언트 통신 안됨: "+socketChannel.getRemoteAddress()+" : " + Thread.currentThread().getName() + "]";
-					//Platform.runLater(()->displayText(message));
-					//connections.remove(Client.this);
-					//socketChannel.close();
-				//}catch(IOException e) {
-					
-				//}					
-			//}
-			
-		//});
-		
 		synchronized(sendLock)
 		{
-			
+			ByteBuffer buffer = sendBuffer.getBuffer();
+			socketChannel.write(buffer,buffer,new CompletionHandler<Integer, ByteBuffer>(){
+				@Override
+				public void completed(Integer result, ByteBuffer attachment) {
+					try {
+						
+					}
+					catch(Exception e) {
+						e.printStackTrace();
+					}
+				}
+
+				@Override
+				public void failed(Throwable exc, ByteBuffer attachment) {
+					try{
+						socketChannel.close();
+					}catch(IOException e) {
+						e.printStackTrace();
+					}
+				}
+			});
 		}
-		
 	}
 	
 	public void closeSession()

@@ -24,6 +24,8 @@ public class NetServer {
 	private final AtomicInteger sessionCnt = new AtomicInteger(0);
 	private HashMap<Integer,Session> sessionByID = new HashMap<Integer,Session>();
 	
+	private Object sessionLock = new Object();
+	
 	public NetServer(InetSocketAddress inetAddress, boolean config) throws IOException
 	{
 		// 비동기 채널 그룹, 쓰레드 수는 cpu 코어 * 2 
@@ -55,7 +57,10 @@ public class NetServer {
 				try {
 					Session session = new Session();
 					int sessionid = sessionCnt.incrementAndGet();
-					sessionByID.put(sessionid, session);
+					synchronized(sessionLock)
+					{
+						sessionByID.put(sessionid, session);
+					}
 					session.Init(result, sessionid);
 					
 					DispatchMessageManager.getInstance().connectSession(sessionid);
@@ -95,6 +100,25 @@ public class NetServer {
 	
 	public Session getSession(int sessionId)
 	{
-		return sessionByID.get(sessionId);
+		Session session = null;
+		synchronized(sessionLock)
+		{
+			session = sessionByID.get(sessionId);
+		}
+		
+		return session;
+	}
+	
+	public void delSession(int sessionId)
+	{
+		synchronized(sessionLock)
+		{
+			Session se = sessionByID.get(sessionId);
+			if(se != null)
+			{
+				se.closeSession();
+				sessionByID.remove(sessionId);
+			}
+		}
 	}
 }
