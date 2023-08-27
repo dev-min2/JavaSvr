@@ -41,7 +41,6 @@ public class PacketUtil
 	}
 	
 	
-	
 	public static Packet convertPacketFromBytes(byte[] bytes) throws ClassNotFoundException, IOException
 	{
 		short packetSize = isValidPacket(bytes);

@@ -57,4 +57,17 @@ public class RingBuffer {
 	{
 		return remainLen;
 	}
+	
+	public void writeBuffer(byte[] buffer)
+	{
+		byteBuffer.put(buffer);
+	}
+	
+	public void releaseBuffer()
+	{
+		if(byteBuffer.position() > 0)
+		{
+			clean();
+		}
+	}
 }

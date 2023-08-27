@@ -9,6 +9,7 @@ import java.nio.channels.CompletionHandler;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
+import java.util.Map.Entry;
 
 /*
  소켓 Async Server
@@ -93,7 +94,19 @@ public class NetServer {
 	public boolean stopServer() throws IOException
 	{
 		if(asyncServerSocketChannel != null && asyncServerSocketChannel.isOpen())
+		{
+			DispatchMessageManager.getInstance().stopThread();
+			synchronized(sessionLock)
+			{
+				for(Entry<Integer,Session> ety : sessionByID.entrySet())
+				{
+					Session s = ety.getValue();
+					if(s != null)
+						s.closeSession();
+				}
+			}
 			asyncServerSocketChannel.close();
+		}
 		
 		return true;
 	}

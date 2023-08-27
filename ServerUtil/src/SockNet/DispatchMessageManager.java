@@ -38,6 +38,7 @@ public class DispatchMessageManager
 				}
 			}
 		};
+		dispatchSendThread.start();
 	}
 	
 	public void stopThread()
@@ -77,6 +78,25 @@ public class DispatchMessageManager
 		return ret;
 	}
 	
+	public boolean delSession(int sessionId)
+	{
+		if(sessionId < 0)
+			return false;
+		
+		synchronized(lock)
+		{
+			if(recvPacketBySessionId.containsKey(sessionId) &&
+			   sendPacketBySessionId.containsKey(sessionId) ) 
+			{
+				recvPacketBySessionId.remove(sessionId);
+				sendPacketBySessionId.remove(sessionId);
+			}
+		}
+		
+		netServer.delSession(sessionId);
+		return true;
+	}
+	
 	public void addRecvPacket(int sessionId, Packet packet )
 	{
 		if(sessionId < 0 || packet == null)
@@ -110,19 +130,17 @@ public class DispatchMessageManager
 	}
 	
 	
-	@SuppressWarnings("unchecked")
 	public HashMap<Integer,ArrayList<Packet>> flushRecvPacket()
 	{
-		HashMap<Integer,ArrayList<Packet>> ret = null;
+		HashMap<Integer,ArrayList<Packet>> ret = new HashMap<Integer,ArrayList<Packet>>();
 		synchronized(lock)
 		{
-			// 복사하고 원본은 비우기떄문에 얕은복사여도 된다.
-			ret = (HashMap<Integer, ArrayList<Packet>>)recvPacketBySessionId.clone();
 			for(Entry<Integer, ArrayList<Packet>> ety : recvPacketBySessionId.entrySet())
 			{
 				ArrayList<Packet> list = ety.getValue();
 				if(list != null)
 				{
+					ret.put(ety.getKey(), new ArrayList<Packet>(ety.getValue()));
 					list.clear();
 				}
 			}
@@ -130,19 +148,17 @@ public class DispatchMessageManager
 		return ret;
 	}
 	
-	@SuppressWarnings("unchecked")
 	public HashMap<Integer,ArrayList<Packet>> flushSendPacket()
 	{
-		HashMap<Integer,ArrayList<Packet>> ret = null;
+		HashMap<Integer,ArrayList<Packet>> ret = new HashMap<Integer,ArrayList<Packet>>();
 		synchronized(lock)
 		{
-			// 복사하고 원본(Value)은 비우기떄문에 얕은복사여도 된다.
-			ret = (HashMap<Integer, ArrayList<Packet>>)sendPacketBySessionId.clone();
 			for(Entry<Integer, ArrayList<Packet>> ety : sendPacketBySessionId.entrySet())
 			{
 				ArrayList<Packet> list = ety.getValue();
 				if(list != null)
 				{
+					ret.put(ety.getKey(), new ArrayList<Packet>(ety.getValue()));
 					list.clear();
 				}
 			}

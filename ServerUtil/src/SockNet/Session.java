@@ -21,7 +21,7 @@ public class Session {
 	public void Init(AsynchronousSocketChannel socketChannel, int sessionId)
 	{
 		this.socketChannel = socketChannel;
-		this.sessionId = sessionId;
+		this.sessionId = sessionId;		
 		registerReceive(); // 초기화하자마자 receive 걸어두기
 	}
 	
@@ -98,12 +98,7 @@ public class Session {
 
 			@Override
 			public void failed(Throwable exc, ByteBuffer attachment) {
-				try{
-					socketChannel.close();
-				}catch(IOException e) {
-					e.printStackTrace();
-				}
-				
+				closeSession();
 			}
 			
 		});
@@ -121,20 +116,27 @@ public class Session {
 	public void send(Packet packet) {
 		synchronized(sendLock)
 		{
+			byte[] packetArray = null;
 			try {
-				byte[] packetArray = PacketUtil.convertBytesFromPacket(packet);
-				
+				packetArray = PacketUtil.convertBytesFromPacket(packet);
 			}catch(Exception e)
 			{
 				e.printStackTrace();
 				return;
 			}
-			ByteBuffer buffer = sendBuffer.getBuffer();
+			
+			// Release할게있다면 여기서 해준다. (Send Complete후 처리해버리면 raceCondition문제 -> 다른쓰레드임)
+			sendBuffer.releaseBuffer();
+			sendBuffer.writeBuffer(packetArray);
+			
+			ByteBuffer buffer = ByteBuffer.allocate(packetArray.length);
+			buffer.put(packetArray);
 			socketChannel.write(buffer,buffer,new CompletionHandler<Integer, ByteBuffer>(){
 				@Override
 				public void completed(Integer result, ByteBuffer attachment) {
 					try {
-						
+						int sendLen = attachment.limit();
+						System.out.println("송신 size : " + sendLen);
 					}
 					catch(Exception e) {
 						e.printStackTrace();
@@ -143,11 +145,7 @@ public class Session {
 
 				@Override
 				public void failed(Throwable exc, ByteBuffer attachment) {
-					try{
-						socketChannel.close();
-					}catch(IOException e) {
-						e.printStackTrace();
-					}
+					closeSession();
 				}
 			});
 		}
@@ -158,6 +156,7 @@ public class Session {
 		try
 		{
 			socketChannel.close();
+			DispatchMessageManager.getInstance().delSession(sessionId);
 		}catch(Exception e)
 		{
 			e.printStackTrace();
