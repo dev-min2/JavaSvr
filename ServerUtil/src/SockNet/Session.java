@@ -1,11 +1,8 @@
 package SockNet;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.nio.charset.Charset;
-import java.util.*;
 
 import PacketUtils.Packet;
 import PacketUtils.PacketUtil;
@@ -13,10 +10,9 @@ import PacketUtils.PacketUtil;
 public class Session {
 	
 	private int sessionId = 0;
-	private AsynchronousSocketChannel socketChannel;
+	private AsynchronousSocketChannel socketChannel = null;
 	private RingBuffer recvBuffer = new RingBuffer();
 	private RingBuffer sendBuffer = new RingBuffer();
-	private Object sendLock = new Object();
 	
 	public void Init(AsynchronousSocketChannel socketChannel, int sessionId)
 	{
@@ -33,6 +29,12 @@ public class Session {
 		socketChannel.read(byteBuffer, byteBuffer, new CompletionHandler<Integer, ByteBuffer>(){
 			@Override
 			public void completed(Integer result, ByteBuffer attachment) {
+				if(result == -1)
+				{
+					closeSession();
+					return;
+				}
+				
 				try {
 					int readSize = 0; // 실제 읽은 총량(all amount)사이즈
 					int recvLen = 0; // 남은 패킷 길이.
@@ -112,43 +114,44 @@ public class Session {
 	// send는 언제든 호출될 수 있음.
 	// Dispatch sendThread1 -> A Session Pop ~~>패킷처리
 	// Dispatch sendThread2 -> A Session Pop ~~>패킷처리 
-	// 위와 같은 경우때문에 lock을 걸어야함.
+	// 위와 같은 경우때문에 lock을 걸어야하나.. 별도 Session이 들고있는 sendBuffer에 send한 내용물을 따로 저장하지않는다.
+	// 즉 send가 실패한경우를 제외한 덜 송신된 경우는 우선 배제. -> 쓰레드별로 독립적으로 버퍼 데이터를 담아서 송신
 	public void send(Packet packet) {
-		synchronized(sendLock)
+		byte[] packetArray = null;
+		try {
+			packetArray = PacketUtil.convertBytesFromPacket(packet);
+		}catch(Exception e)
 		{
-			byte[] packetArray = null;
-			try {
-				packetArray = PacketUtil.convertBytesFromPacket(packet);
-			}catch(Exception e)
-			{
-				e.printStackTrace();
-				return;
-			}
-			
-			// Release할게있다면 여기서 해준다. (Send Complete후 처리해버리면 raceCondition문제 -> 다른쓰레드임)
-			sendBuffer.releaseBuffer();
-			sendBuffer.writeBuffer(packetArray);
-			
-			ByteBuffer buffer = ByteBuffer.allocate(packetArray.length);
-			buffer.put(packetArray);
-			socketChannel.write(buffer,buffer,new CompletionHandler<Integer, ByteBuffer>(){
-				@Override
-				public void completed(Integer result, ByteBuffer attachment) {
-					try {
-						int sendLen = attachment.limit();
-						System.out.println("송신 size : " + sendLen);
-					}
-					catch(Exception e) {
-						e.printStackTrace();
-					}
-				}
-
-				@Override
-				public void failed(Throwable exc, ByteBuffer attachment) {
-					closeSession();
-				}
-			});
+			e.printStackTrace();
+			return;
 		}
+		
+		ByteBuffer buffer = ByteBuffer.allocateDirect(packetArray.length);
+		buffer.put(packetArray);
+		buffer.flip();
+		socketChannel.write(buffer,buffer,new CompletionHandler<Integer, ByteBuffer>(){
+			@Override
+			public void completed(Integer result, ByteBuffer attachment) {
+				try {
+					if(result == -1)
+					{
+						closeSession();
+						return;
+					}
+					
+					int sendLen = attachment.limit();
+					System.out.println("송신 size : " + sendLen);
+				}
+				catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
+
+			@Override
+			public void failed(Throwable exc, ByteBuffer attachment) {
+				closeSession();
+			}
+		});
 	}
 	
 	public void closeSession()

@@ -29,8 +29,8 @@ public class NetServer {
 	
 	public NetServer(InetSocketAddress inetAddress, boolean config) throws IOException
 	{
-		// 비동기 채널 그룹, 쓰레드 수는 cpu 코어 * 2 
-		channelGroup = AsynchronousChannelGroup.withFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2, Executors.defaultThreadFactory());
+		// 비동기 채널 그룹, 쓰레드 수는 cpu 코어
+		channelGroup = AsynchronousChannelGroup.withFixedThreadPool(Runtime.getRuntime().availableProcessors(), Executors.defaultThreadFactory());
 		// 서버 소켓 채널 열기
 		asyncServerSocketChannel = AsynchronousServerSocketChannel.open(channelGroup);
 		

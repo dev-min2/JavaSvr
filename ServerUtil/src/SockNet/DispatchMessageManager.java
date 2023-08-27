@@ -129,7 +129,6 @@ public class DispatchMessageManager
 		}
 	}
 	
-	
 	public HashMap<Integer,ArrayList<Packet>> flushRecvPacket()
 	{
 		HashMap<Integer,ArrayList<Packet>> ret = new HashMap<Integer,ArrayList<Packet>>();
@@ -180,6 +179,9 @@ public class DispatchMessageManager
 				int sessionId = ety.getKey();
 				var packetList = ety.getValue();
 				
+				if(packetList.size() <= 0)
+					continue;
+				
 				Session session = netServer.getSession(sessionId);
 				if(session != null)
 				{
@@ -191,6 +193,6 @@ public class DispatchMessageManager
 			Thread.currentThread().sleep(10);
 		}
 		
-		System.out.println("DispatchThread " + Thread.currentThread().getId() + "번 쓰레드 종료");
+		System.out.println("sendThread " + Thread.currentThread().getId() + "번 쓰레드 종료");
 	}
 }
