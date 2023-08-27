@@ -129,7 +129,6 @@ public class NetServer {
 			Session se = sessionByID.get(sessionId);
 			if(se != null)
 			{
-				se.closeSession();
 				sessionByID.remove(sessionId);
 			}
 		}
